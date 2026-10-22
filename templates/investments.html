@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Investments - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Investment Portfolio</h2>
+        <p class="text-muted mb-0">Total Capital Deployed: <strong class="text-primary">${{ "{:,.2f}".format(total_invested) }}</strong></p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addInvestmentModal">
+        <i class="bi bi-plus-lg me-1"></i> Log Investment Buy
+    </button>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Allocation Chart -->
+    <div class="col-lg-5">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <i class="bi bi-pie-chart text-primary me-2"></i> Portfolio Asset Allocation
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                {% if alloc_labels %}
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="investChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-graph-up-arrow fs-1 mb-2 d-block"></i>
+                    No investment assets recorded yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Summary Metrics -->
+    <div class="col-lg-7">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <i class="bi bi-shield-lock text-success me-2"></i> Holdings Summary
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded">
+                            <span class="text-muted small">Total Cost Basis</span>
+                            <h3 class="fw-bold mb-0">${{ "{:,.2f}".format(total_invested) }}</h3>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded">
+                            <span class="text-muted small">Active Positions</span>
+                            <h3 class="fw-bold mb-0">{{ investments|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 small mb-0">
+                    <i class="bi bi-info-circle me-1"></i> Cost basis is computed as <code>quantity &times; buy_price</code>. You can record equities, ETFs, mutual funds, or index trackers.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Holdings Table -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h5 class="fw-bold mb-0">Recorded Holdings & Trades</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Instrument / Ticker</th>
+                    <th>Buy Date</th>
+                    <th class="text-end">Quantity</th>
+                    <th class="text-end">Avg Buy Price</th>
+                    <th class="text-end">Total Cost</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in investments %}
+                <tr>
+                    <td>
+                        <span class="badge bg-primary-subtle text-primary fw-bold fs-6">{{ inv.instrument }}</span>
+                    </td>
+                    <td>{{ inv.buy_date.strftime('%Y-%m-%d') }}</td>
+                    <td class="text-end">{{ inv.quantity }}</td>
+                    <td class="text-end">${{ "{:,.2f}".format(inv.buy_price) }}</td>
+                    <td class="text-end fw-bold">${{ "{:,.2f}".format(inv.total_cost) }}</td>
+                    <td class="text-center">
+                        <form method="POST" action="{{ url_for('delete_investment', id=inv.inv_id) }}" onsubmit="return confirm('Remove holding {{ inv.instrument }}?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        No investment transactions recorded.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Add Investment -->
+<div class="modal fade" id="addInvestmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-graph-up me-2"></i> Log Investment Buy</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_investment') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Instrument / Ticker Symbol</label>
+                        <input type="text" name="instrument" class="form-control" placeholder="e.g. AAPL, NVDA, VOO, BTC" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Quantity (Shares/Units)</label>
+                            <input type="number" min="1" step="1" name="quantity" class="form-control" placeholder="10" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Buy Price ($ / unit)</label>
+                            <input type="number" step="0.01" min="0.01" name="buy_price" class="form-control" placeholder="150.00" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Purchase Date</label>
+                        <input type="date" name="buy_date" class="form-control" value="{{ today_date }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Investment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if alloc_labels %}
+    const ctx = document.getElementById('investChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: {{ alloc_labels|tojson }},
+            datasets: [{
+                data: {{ alloc_values|tojson }},
+                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#64748b']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return ` ${c.label}: $${c.parsed.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

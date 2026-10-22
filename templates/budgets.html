@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Budgets - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Monthly Budgets</h2>
+        <p class="text-muted mb-0">Control discretionary spending and prevent budget overruns</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center mt-2 mt-md-0">
+        <!-- Month Filter -->
+        <form method="GET" action="{{ url_for('budgets') }}" class="d-flex align-items-center me-2">
+            <input type="month" name="month" class="form-control form-control-sm me-2" value="{{ target_month }}" onchange="this.form.submit()">
+        </form>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+            <i class="bi bi-plus-lg me-1"></i> Set Budget
+        </button>
+    </div>
+</div>
+
+<!-- Budget Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 bg-white stat-card">
+            <span class="text-muted small fw-semibold">Total Allocated Budget ({{ target_month }})</span>
+            <h3 class="fw-bold mb-0 text-dark">${{ "{:,.2f}".format(total_budgeted) }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 bg-white stat-card">
+            <span class="text-muted small fw-semibold">Actual Month-to-Date Spend</span>
+            <h3 class="fw-bold mb-0 {% if total_spent > total_budgeted %}text-danger{% else %}text-primary{% endif %}">
+                ${{ "{:,.2f}".format(total_spent) }}
+            </h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 bg-white stat-card">
+            <span class="text-muted small fw-semibold">Remaining Total Cushion</span>
+            <h3 class="fw-bold mb-0 text-success">${{ "{:,.2f}".format(total_remaining) }}</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Category Budgets Grid -->
+<div class="row g-4">
+    {% for b in budgets %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-top border-4 {% if b.status == 'danger' %}border-danger{% elif b.status == 'warning' %}border-warning{% else %}border-success{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold mb-0">{{ b.category_name }}</h5>
+                    <span class="badge {% if b.status == 'danger' %}bg-danger{% elif b.status == 'warning' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                        {{ b.actual_percent }}%
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Spent: <strong>${{ "{:,.2f}".format(b.spent_amount) }}</strong></span>
+                        <span>Limit: <strong>${{ "{:,.2f}".format(b.limit_amount) }}</strong></span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar {% if b.status == 'danger' %}bg-danger{% elif b.status == 'warning' %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {{ b.percent }}%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top small">
+                    <span class="text-muted">
+                        {% if b.spent_amount > b.limit_amount %}
+                        <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Over by ${{ "{:,.2f}".format(b.spent_amount - b.limit_amount) }}</span>
+                        {% else %}
+                        Remaining: <span class="text-success fw-semibold">${{ "{:,.2f}".format(b.remaining) }}</span>
+                        {% endif %}
+                    </span>
+
+                    <form method="POST" action="{{ url_for('delete_budget', id=b.budget_id) }}" onsubmit="return confirm('Remove budget for this category?');" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-link text-danger p-0">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card p-5 text-center text-muted">
+            <i class="bi bi-clipboard2-data fs-1 mb-2"></i>
+            <h5>No budgets set for {{ target_month }}</h5>
+            <p class="small">Define category limits to monitor spending velocity and receive AI alerts.</p>
+            <div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBudgetModal">
+                    Set Monthly Budget
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: Set Budget -->
+<div class="modal fade" id="addBudgetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-piggy-bank me-2"></i> Set Category Budget</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_budget') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Expense Category</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat.category_id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Target Month</label>
+                        <input type="month" name="month" class="form-control" value="{{ target_month }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Monthly Limit ($)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" min="1.00" name="limit_amount" class="form-control" placeholder="500.00" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Budget</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

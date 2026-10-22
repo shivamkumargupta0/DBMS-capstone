@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Record Transaction - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+        <div class="card shadow-sm p-3">
+            <div class="card-header bg-white border-0 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-plus-circle text-primary me-2"></i> Log New Transaction</h4>
+                        <p class="text-muted small mb-0">Record an expense or income and maintain real-time account balances</p>
+                    </div>
+                    <a href="{{ url_for('view_transactions') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_transaction') }}" id="transactionForm">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Transaction Type <span class="text-danger">*</span></label>
+                            <select name="txn_type" id="txn_type" class="form-select" required>
+                                <option value="Expense" selected>Expense (Money Out)</option>
+                                <option value="Income">Income (Money In)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Amount ($) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control" placeholder="0.00" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Account <span class="text-danger">*</span></label>
+                            <select name="account_id" id="account_id" class="form-select" required>
+                                {% for acc in accounts %}
+                                <option value="{{ acc.account_id }}">{{ acc.name }} (Current: ${{ "{:,.2f}".format(acc.balance) }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="date" id="date" class="form-control" value="{{ today_date }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Description / Merchant</label>
+                        <input type="text" name="description" id="description" class="form-control" placeholder="e.g. Whole Foods weekly groceries, Netflix, Monthly Salary" autocomplete="off">
+                        <!-- AI Categorization Suggestion Pill -->
+                        <div id="aiSuggestionBox" class="mt-2 d-none">
+                            <div class="d-flex align-items-center bg-warning-subtle text-dark p-2 rounded small border border-warning">
+                                <i class="bi bi-magic text-warning me-2 fs-5"></i>
+                                <span class="flex-grow-1">
+                                    AI Category Suggestion: <strong id="suggestedCategoryName"></strong> 
+                                    <span class="badge bg-dark-subtle text-dark ms-1" id="confidenceBadge"></span>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-warning text-dark py-0" id="applySuggestionBtn">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select name="category_id" id="category_id" class="form-select" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat.category_id }}" data-type="{{ cat.type }}">{{ cat.name }} ({{ cat.type }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text small">Need a custom category? <a href="{{ url_for('categories') }}">Manage categories here</a>.</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary py-2 fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Save Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const descInput = document.getElementById('description');
+    const categorySelect = document.getElementById('category_id');
+    const aiBox = document.getElementById('aiSuggestionBox');
+    const suggestedCatName = document.getElementById('suggestedCategoryName');
+    const confBadge = document.getElementById('confidenceBadge');
+    const applyBtn = document.getElementById('applySuggestionBtn');
+    let debounceTimer;
+
+    let pendingSuggestion = null;
+
+    descInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        if (query.length < 3) {
+            aiBox.classList.add('d-none');
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch("{{ url_for('api_predict_category') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ description: query })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.predicted_category) {
+                    pendingSuggestion = data.predicted_category;
+                    suggestedCatName.textContent = data.predicted_category;
+                    confBadge.textContent = Math.round(data.confidence * 100) + "% confidence";
+                    aiBox.classList.remove('d-none');
+                } else {
+                    aiBox.classList.add('d-none');
+                }
+            })
+            .catch(err => console.error("AI Categorizer error:", err));
+        }, 350);
+    });
+
+    applyBtn.addEventListener('click', function() {
+        if (!pendingSuggestion) return;
+        const options = categorySelect.options;
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].text.toLowerCase().startsWith(pendingSuggestion.toLowerCase())) {
+                categorySelect.selectedIndex = i;
+                aiBox.classList.add('d-none');
+                break;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

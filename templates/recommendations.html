@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}AI Advisory & Insights - FinAI Manager{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <div class="d-flex align-items-center">
+            <span class="badge bg-warning text-dark p-2 rounded-circle me-2"><i class="bi bi-cpu-fill fs-5"></i></span>
+            <h2 class="fw-bold mb-0">AI Financial Advisory Hub</h2>
+        </div>
+        <p class="text-muted mb-0 mt-1">Rule-based heuristic checks, Scikit-Learn ML forecasting, and anomaly detection</p>
+    </div>
+    <!-- Month Picker -->
+    <form method="GET" action="{{ url_for('recommendations') }}" class="d-flex align-items-center mt-2 mt-md-0">
+        <label class="form-label small fw-semibold me-2 mb-0">Analysis Month:</label>
+        <input type="month" name="month" class="form-control form-control-sm" value="{{ target_month }}" onchange="this.form.submit()">
+    </form>
+</div>
+
+<!-- Mandatory Intuit AI Disclaimer & Transparency Banner (Section 7) -->
+<div class="alert alert-warning border-warning shadow-sm mb-4">
+    <div class="d-flex">
+        <i class="bi bi-shield-exclamation fs-3 text-warning me-3"></i>
+        <div>
+            <h6 class="fw-bold mb-1">Financial Advisory & Data Transparency Notice</h6>
+            <p class="small mb-1 text-dark">{{ analysis.disclaimer }}</p>
+            <div class="small text-muted">
+                <i class="bi bi-clock-history me-1"></i> Analysis dynamically computed for period: <strong>{{ target_month }}</strong> &bull; Local server computation ensures complete data privacy.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rule-Based Heuristic Recommendations -->
+<h4 class="fw-bold mb-3"><i class="bi bi-bell-fill text-primary me-2"></i> Actionable Spending & Goal Insights</h4>
+<div class="row g-3 mb-5">
+    {% for rec in analysis.recommendations %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-start border-4 border-{{ rec.type }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-{{ rec.type }}-subtle text-{{ rec.type }} fw-bold">{{ rec.category }}</span>
+                    <span class="small text-muted text-uppercase fw-semibold">{{ rec.type }}</span>
+                </div>
+                <h5 class="fw-bold mb-2">{{ rec.title }}</h5>
+                <p class="small text-secondary mb-3">{{ rec.message }}</p>
+                <div class="p-2 bg-light rounded small">
+                    <strong class="text-dark"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Recommended Action:</strong>
+                    <div class="text-muted mt-1">{{ rec.action }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Machine Learning: Spending Forecast -->
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center">
+        <div>
+            <h5 class="fw-bold mb-0"><i class="bi bi-graph-up text-primary me-2"></i> Predictive Spending Forecast (Linear Regression Model)</h5>
+            <small class="text-muted">Trained on historical monthly spending patterns to project future expenditure</small>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <span class="badge bg-light text-dark border">Trend: <strong class="text-uppercase">{{ forecast.trend_direction }}</strong></span>
+            <span class="badge bg-light text-dark border">Mean Absolute Error (MAE): <strong>${{ forecast.mae }}</strong></span>
+            <span class="badge bg-light text-dark border">RMSE: <strong>${{ forecast.rmse }}</strong></span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-4 align-items-center">
+            <div class="col-lg-8">
+                <div style="position: relative; height: 320px; width: 100%;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="p-3 bg-light rounded">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-calculator me-1"></i> Forecast Breakdown</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for i in range(forecast.forecast_months|length) %}
+                        <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                            <span>Predicted for <strong>{{ forecast.forecast_months[i] }}</strong></span>
+                            <strong class="text-primary">${{ "{:,.2f}".format(forecast.forecast_values[i]) }}</strong>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="small text-muted">
+                        <i class="bi bi-info-circle me-1"></i> Slope velocity: <strong>{{ '+' if forecast.monthly_slope > 0 else '' }}${{ forecast.monthly_slope }}/month</strong>. As additional monthly records are saved, the model continually refines accuracy.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistical Outlier / Anomaly Detection Table -->
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-white py-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-exclamation-diamond text-danger me-2"></i> Spending Outlier & Anomaly Detection</h5>
+        <small class="text-muted">Flags individual transactions with spending greater than 2 standard deviations above category mean</small>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th class="text-end">Expense Amount</th>
+                    <th class="text-end">Category Mean</th>
+                    <th class="text-center">Severity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for anom in analysis.anomalies %}
+                <tr>
+                    <td>{{ anom.date }}</td>
+                    <td><span class="badge bg-secondary-subtle text-secondary">{{ anom.category }}</span></td>
+                    <td>{{ anom.description }}</td>
+                    <td class="text-end fw-bold text-danger">${{ "{:,.2f}".format(anom.amount) }}</td>
+                    <td class="text-end text-muted">${{ "{:,.2f}".format(anom.avg_category_amount) }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-danger-subtle text-danger border border-danger">Outlier Spike</span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        <i class="bi bi-shield-check text-success fs-3 d-block mb-1"></i>
+                        No statistical spending anomalies found. All recent transactions fall within expected standard deviation.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Interactive NLP Transaction Categorizer Sandbox -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-terminal text-info me-2"></i> Machine Learning Categorizer Sandbox (NLP Pipeline)</h5>
+        <small class="text-muted">Interactive demo of our Scikit-Learn TF-IDF + Multinomial Naive Bayes classifier used for automatic transaction categorization</small>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-7">
+                <label class="form-label small fw-semibold">Enter any merchant name or transaction text:</label>
+                <div class="input-group">
+                    <input type="text" id="sandboxInput" class="form-control" placeholder="e.g. Chevron gas refill, Subway sandwich, Adobe Creative Cloud" value="Starbucks cappuccino with croissant">
+                    <button class="btn btn-primary" type="button" id="sandboxBtn">
+                        <i class="bi bi-lightning-charge me-1"></i> Test Classification
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="p-3 bg-light rounded h-100 d-flex flex-column justify-content-center">
+                    <span class="text-muted small">Classifier Prediction:</span>
+                    <div class="d-flex align-items-center mt-1">
+                        <h4 class="fw-bold mb-0 text-primary me-2" id="sandboxResult">Food</h4>
+                        <span class="badge bg-success-subtle text-success border border-success" id="sandboxConfidence">94% Confidence</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Forecast Chart
+    const ctxForecast = document.getElementById('forecastChart').getContext('2d');
+    const histMonths = {{ forecast.historical_months|tojson }};
+    const histVals = {{ forecast.historical_values|tojson }};
+    const fcastMonths = {{ forecast.forecast_months|tojson }};
+    const fcastVals = {{ forecast.forecast_values|tojson }};
+
+    // Combine labels
+    const allLabels = histMonths.concat(fcastMonths);
+    
+    // Historical series with nulls for future
+    const historicalSeries = histVals.concat(fcastMonths.map(() => null));
+    
+    // Forecast series with nulls for historical except the connection point
+    const forecastSeries = histMonths.map((m, idx) => idx === histMonths.length - 1 ? histVals[idx] : null).concat(fcastVals);
+
+    new Chart(ctxForecast, {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: [
+                {
+                    label: 'Historical Monthly Spending ($)',
+                    data: historicalSeries,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 5
+                },
+                {
+                    label: 'ML Projected Spending ($)',
+                    data: forecastSeries,
+                    borderColor: '#f59e0b',
+                    borderDash: [6, 6],
+                    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(v) { return '$' + v.toLocaleString(); }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return ` ${c.dataset.label}: $${c.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Interactive NLP Sandbox
+    const testBtn = document.getElementById('sandboxBtn');
+    const inputEl = document.getElementById('sandboxInput');
+    const resEl = document.getElementById('sandboxResult');
+    const confEl = document.getElementById('sandboxConfidence');
+
+    function runPrediction() {
+        const text = inputEl.value.trim();
+        if (!text) return;
+        resEl.textContent = 'Analyzing...';
+        confEl.textContent = '...';
+
+        fetch("{{ url_for('api_predict_category') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: text })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.predicted_category) {
+                resEl.textContent = d.predicted_category;
+                confEl.textContent = Math.round(d.confidence * 100) + '% Confidence';
+            } else {
+                resEl.textContent = 'Uncertain';
+                confEl.textContent = '< 40%';
+            }
+        })
+        .catch(err => {
+            resEl.textContent = 'Error';
+            confEl.textContent = '';
+        });
+    }
+
+    testBtn.addEventListener('click', runPrediction);
+    inputEl.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') runPrediction();
+    });
+});
+</script>
+{% endblock %}

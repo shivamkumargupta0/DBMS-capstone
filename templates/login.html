@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Login - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg p-4">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <span class="badge bg-primary p-3 rounded-circle mb-3">
+                        <i class="bi bi-shield-lock fs-3 text-white"></i>
+                    </span>
+                    <h3 class="fw-bold">Welcome Back</h3>
+                    <p class="text-muted small">Access your personal finance & investment dashboard</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label small fw-semibold">Username or Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-person text-muted"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="alice or alice@example.com" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label small fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-key text-muted"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                        <label class="form-check-label small" for="remember">Keep me logged in</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                    </button>
+                </form>
+
+                <div class="alert alert-light border mt-4 p-2 small">
+                    <div class="fw-semibold text-secondary mb-1"><i class="bi bi-info-circle me-1"></i> Demo Credentials:</div>
+                    <div>Username: <code>alice</code> | Password: <code>password123</code></div>
+                    <div>Username: <code>bob</code> | Password: <code>password123</code></div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <span class="text-muted small">Don't have an account?</span>
+                    <a href="{{ url_for('register') }}" class="small fw-semibold text-decoration-none ms-1">Create Account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

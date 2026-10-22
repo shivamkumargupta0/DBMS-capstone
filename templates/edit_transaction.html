@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Edit Transaction - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+        <div class="card shadow-sm p-3">
+            <div class="card-header bg-white border-0 pb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-pencil-square text-primary me-2"></i> Edit Transaction #{{ txn.txn_id }}</h4>
+                        <p class="text-muted small mb-0">Changes will automatically recalculate affected account balances</p>
+                    </div>
+                    <a href="{{ url_for('view_transactions') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_transaction', id=txn.txn_id) }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Transaction Type</label>
+                            <select name="txn_type" class="form-select" required>
+                                <option value="Expense" {% if txn.txn_type == 'Expense' %}selected{% endif %}>Expense (Money Out)</option>
+                                <option value="Income" {% if txn.txn_type == 'Income' %}selected{% endif %}>Income (Money In)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Amount ($)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0.01" name="amount" class="form-control" value="{{ txn.amount }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Account</label>
+                            <select name="account_id" class="form-select" required>
+                                {% for acc in accounts %}
+                                <option value="{{ acc.account_id }}" {% if txn.account_id == acc.account_id %}selected{% endif %}>
+                                    {{ acc.name }} (Balance: ${{ "{:,.2f}".format(acc.balance) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Date</label>
+                            <input type="date" name="date" class="form-control" value="{{ txn.date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <input type="text" name="description" class="form-control" value="{{ txn.description or '' }}">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select name="category_id" class="form-select" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat.category_id }}" {% if txn.category_id == cat.category_id %}selected{% endif %}>
+                                {{ cat.name }} ({{ cat.type }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-save me-1"></i> Update Transaction
+                        </button>
+                        <a href="{{ url_for('view_transactions') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

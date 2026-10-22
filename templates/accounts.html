@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Accounts - FinAI Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Financial Accounts</h2>
+        <p class="text-muted mb-0">Total Liquid Holdings: <strong class="text-primary">${{ "{:,.2f}".format(total_balance) }}</strong></p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+        <i class="bi bi-plus-lg me-1"></i> New Account
+    </button>
+</div>
+
+<!-- Accounts Cards Grid -->
+<div class="row g-4 mb-4">
+    {% for acc in accounts %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-primary-subtle text-primary p-2 me-2 fs-5">
+                            {% if acc.type == 'Checking' %}<i class="bi bi-wallet2"></i>
+                            {% elif acc.type == 'Savings' %}<i class="bi bi-piggy-bank"></i>
+                            {% elif acc.type == 'Credit' %}<i class="bi bi-credit-card"></i>
+                            {% else %}<i class="bi bi-cash-stack"></i>{% endif %}
+                        </span>
+                        <div>
+                            <h5 class="fw-bold mb-0">{{ acc.name }}</h5>
+                            <span class="badge bg-light text-secondary border">{{ acc.type }}</span>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-secondary" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('view_transactions', account_id=acc.account_id) }}">
+                                    <i class="bi bi-list-check me-2"></i> View Transactions
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ url_for('delete_account', id=acc.account_id) }}" onsubmit="return confirm('Deleting account will cascade delete its transactions. Proceed?');">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-trash me-2"></i> Delete Account
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-muted small">Current Balance</span>
+                    <h3 class="fw-bold mb-0 {% if acc.balance >= 0 %}text-dark{% else %}text-danger{% endif %}">
+                        ${{ "{:,.2f}".format(acc.balance) }}
+                    </h3>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center small text-muted">
+                <span>Created {{ acc.created_at.strftime('%b %d, %Y') if acc.created_at else 'Active' }}</span>
+                <a href="{{ url_for('view_transactions', account_id=acc.account_id) }}" class="text-decoration-none">
+                    Ledger &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: Add Account -->
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bank me-2"></i> Add Financial Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_account') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Account Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Chase Freedom, Main Checking" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Account Type</label>
+                        <select name="type" class="form-select" required>
+                            <option value="Checking">Checking</option>
+                            <option value="Savings">Savings</option>
+                            <option value="Credit">Credit Card</option>
+                            <option value="Cash">Cash / Petty</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Starting Balance ($)</label>
+                        <input type="number" step="0.01" name="balance" class="form-control" value="0.00" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
